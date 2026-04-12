@@ -88,7 +88,25 @@ Windows 暂不推荐用于生产下载（文件路径格式差异较大）。如
 
 ---
 
-## 四、配置 Worker
+## 四、一键下载 Worker 文件（推荐）
+
+在 Linux 服务器或 macOS 终端中，执行以下命令即可自动下载最新版本的全部文件，并在当前目录下生成 `music-worker` 文件夹：
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh)
+```
+
+下载完成后，进入目录编辑配置文件：
+
+```bash
+nano ./music-worker/.env
+```
+
+如需手动下载文件，请参考下一节。
+
+---
+
+## 五、手动配置 Worker
 
 ### 1. 整理文件
 
@@ -134,7 +152,7 @@ mkdir C:\Users\yourname\Music\downloads
 
 ---
 
-## 五、启动 Worker
+## 六、启动 Worker
 
 ### 基本启动方式
 
@@ -182,7 +200,7 @@ pm2 stop music-upload-worker         # 停止
 
 ---
 
-## 六、安装油猴脚本
+## 七、安装油猴脚本
 
 ### 1. 安装 Tampermonkey 浏览器扩展
 
@@ -214,9 +232,9 @@ https://github.com/oj8kr/music_upload/releases/latest/download/music-upload-XXXX
 
 ---
 
-## 七、配置油猴脚本
+## 八、配置油猴脚本
 
-安装脚本后，访问 [qobuz.com](https://www.qobuz.com/) 的专辑页面，右上角会出现一个浮动面板。
+安装脚本后，访问 [qobuz.com](https://play.qobuz.com/) 的专辑页面，右上角会出现一个浮动面板。
 
 ### 1. 基本连接配置
 
@@ -251,7 +269,7 @@ https://github.com/oj8kr/music_upload/releases/latest/download/music-upload-XXXX
 
 ---
 
-## 八、首次使用流程
+## 九、首次使用流程
 
 完成以上配置后，按如下流程开始使用：
 
@@ -265,29 +283,29 @@ Worker 会按顺序**逐张下载**，下载完成后自动生成频谱图和种
 
 ---
 
-## 九、更新 Worker
+## 十、更新 Worker
 
-管理员发布新版本后，按以下步骤更新：
+管理员发布新版本后，在 `music-worker` 目录的**上级目录**重新执行一键脚本，会自动覆盖 `music-worker.js` 和 `.env`（你对 `.env` 的自定义修改会被覆盖，请提前备份）：
 
-1. 下载新版 Release 压缩包并解压
-2. 将新的 `music-worker.js` 替换到你的 Worker 目录
-3. 重启 Worker：
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh)
+```
+
+更新完成后重启 Worker：
 
 ```bash
 # 如果使用 PM2
 pm2 restart music-upload-worker
 
-# 如果直接 node 运行
-# 先 Ctrl+C 停止，再重新运行
-node music-worker.js
+# 如果直接 node 运行，先 Ctrl+C 停止，再重新运行
+cd music-worker && node music-worker.js
 ```
 
-> `.env` 配置文件**不需要替换**，你的自定义配置会保留。
-> 但如果新版本 `.env` 中新增了配置项，请参考新版 `.env` 手动补充。
+> 如需保留 `.env` 自定义配置，更新前先备份：`cp music-worker/.env music-worker/.env.bak`，更新后将自定义项补回。
 
 ---
 
-## 十、常见问题
+## 十一、常见问题
 
 ### Worker 启动后提示「EADDRINUSE」端口被占用
 

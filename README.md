@@ -11,7 +11,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| `music-worker.js` | Worker 子服务，运行在你的本地电脑上，负责从 Qobuz 下载音乐 |
+| `music-worker.js` | Worker 子服务，运行在你的本地电脑或海外服务器上，负责从 Qobuz 下载音乐 |
 | `.env` | Worker 配置文件，填写服务器地址和本地下载目录 |
 | `music-upload-tampermonkey.user.js` | 油猴脚本安装文件，安装后在浏览器中使用 |
 
@@ -105,11 +105,11 @@ Windows 暂不推荐用于生产下载（文件路径格式差异较大）。如
 用任意文本编辑器打开 `.env`（macOS 可用 TextEdit，Windows 用记事本），按实际情况填写：
 
 ```dotenv
-# 主服务地址（向管理员询问，通常是一个 https 地址）
-MAIN_SERVICE_URL=https://your-server.example.com
+# 主服务地址
+MAIN_SERVICE_URL=[https://your-server.example.com](https://admin.hostmails.de)
 
 # 专辑下载保存目录（使用你本地电脑的绝对路径）
-DOWNLOAD_DIR=/home/yourname/downloads
+DOWNLOAD_DIR=/home/downloads
 
 # Worker 本地监听端口（默认 36501，一般不需要修改）
 PORT=36501
@@ -255,10 +255,10 @@ https://github.com/oj8kr/music_upload/releases/latest/download/music-upload-XXXX
 
 完成以上配置后，按如下流程开始使用：
 
-1. **进入 Qobuz** — 在 qobuz.com 浏览专辑，右下角面板展示专辑列表
+1. **进入 Qobuz** — 在 qobuz.com 浏览专辑，右上角面板展示专辑列表
 2. **查看专辑列表** — 可按 HiRes、已下载、上传状态等条件筛选
 3. **单张下载** — 在专辑列表中点击「下载」按钮，将该专辑加入下载队列
-4. **批量下载** — 按照当前筛选条件批量加入队列（最多 50 张）
+4. **批量下载** — 按照当前筛选条件批量加入队列
 5. **查看下载状态** — 面板底部显示当前队列状态（待处理 / 处理中）
 
 Worker 会按顺序**逐张下载**，下载完成后自动生成频谱图和种子文件，保存到 `.env` 中配置的 `DOWNLOAD_DIR` 目录。
@@ -325,10 +325,10 @@ touch /home/yourname/downloads/test.txt && rm /home/yourname/downloads/test.txt 
 
 | 站点 | 页面 |
 |------|------|
-| Qobuz | 所有页面 |
-| Redacted (RED) | upload.php、torrents.php |
-| Orpheus (OPS) | upload.php、torrents.php |
-| DicMusic | upload.php、torrents.php |
+| Qobuz | 专辑页面 |
+| Redacted (RED) | upload.php |
+| Orpheus (OPS) | upload.php |
+| DicMusic | upload.php |
 | GazelleGames (GGN) | upload.php |
 | PterClub | upload.php |
 | Open.cd | upload.php |

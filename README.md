@@ -106,7 +106,7 @@ Windows 暂不推荐用于生产下载（文件路径格式差异较大）。如
 
 ```dotenv
 # 主服务地址
-MAIN_SERVICE_URL=[https://your-server.example.com](https://admin.hostmails.de)
+MAIN_SERVICE_URL=https://admin.hostmails.de
 
 # 专辑下载保存目录（使用你本地电脑的绝对路径）
 DOWNLOAD_DIR=/home/downloads
@@ -216,7 +216,7 @@ https://github.com/oj8kr/music_upload/releases/latest/download/music-upload-XXXX
 
 ## 七、配置油猴脚本
 
-安装脚本后，访问 [qobuz.com](https://www.qobuz.com/) 的任意页面，右下角会出现一个浮动面板。
+安装脚本后，访问 [qobuz.com](https://www.qobuz.com/) 的专辑页面，右上角会出现一个浮动面板。
 
 ### 1. 基本连接配置
 

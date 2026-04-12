@@ -12,10 +12,11 @@ set -euo pipefail
 # ── 配置 ──────────────────────────────────────────────────────────────────────
 REPO="oj8kr/music_upload"
 TARGET_DIR="music-worker"
-FILES=(
-  "music-worker.js"
-  ".env"
-  "music-upload-tampermonkey.user.js"
+# .env 在 release 中以 worker.env 发布（GitHub 不允许下载以 . 开头的 asset 文件名）
+declare -A FILES=(
+  ["music-worker.js"]="music-worker.js"
+  ["worker.env"]=".env"
+  ["music-upload-tampermonkey.user.js"]="music-upload-tampermonkey.user.js"
 )
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -31,9 +32,7 @@ warn()  { echo "${YELLOW}[!]${RESET} $*"; }
 error() { echo "${RED}[✗]${RESET} $*" >&2; exit 1; }
 
 # ── 检查依赖 ─────────────────────────────────────────────────────────────────
-for cmd in curl; do
-  command -v "$cmd" &>/dev/null || error "缺少依赖命令：$cmd，请先安装后重试。"
-done
+command -v curl &>/dev/null || error "缺少依赖命令：curl，请先安装后重试。"
 
 # ── 处理可选 Token 参数 ───────────────────────────────────────────────────────
 TOKEN="${1:-}"
@@ -78,10 +77,11 @@ fi
 echo ""
 echo "正在下载文件..."
 
-for FILE in "${FILES[@]}"; do
-  DEST="${TARGET_DIR}/${FILE}"
-  URL="${BASE_URL}/${FILE}"
-  echo -n "  ${FILE} ... "
+for ASSET in "${!FILES[@]}"; do
+  DEST_NAME="${FILES[$ASSET]}"
+  DEST="${TARGET_DIR}/${DEST_NAME}"
+  URL="${BASE_URL}/${ASSET}"
+  echo -n "  ${ASSET} → ${DEST_NAME} ... "
 
   CURL_OPTS=(-fsSL -o "$DEST" -w "%{http_code}" --retry 3 --retry-delay 2)
   [ -n "$AUTH_HEADER" ] && CURL_OPTS+=(-H "$AUTH_HEADER")
@@ -93,7 +93,7 @@ for FILE in "${FILES[@]}"; do
     echo "${GREEN}完成${RESET}（${SIZE} bytes）"
   else
     echo ""
-    error "下载失败：${FILE}（HTTP ${HTTP_CODE}）\n  URL: ${URL}"
+    error "下载失败：${ASSET}（HTTP ${HTTP_CODE}）\n  URL: ${URL}"
   fi
 done
 

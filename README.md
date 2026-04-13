@@ -82,10 +82,6 @@ brew install sox mktorrent flac ffmpeg
 sudo apt install -y sox mktorrent flac ffmpeg
 ```
 
-### Windows
-
-Windows 暂不推荐用于生产下载（文件路径格式差异较大）。如需使用，请联系管理员获取 WSL（Windows Subsystem for Linux）配置方案。
-
 ---
 
 ## 四、一键下载 Worker 文件（推荐）
@@ -118,7 +114,7 @@ nano ./music-worker/.env
 └── .env
 ```
 
-### 2. 编辑 `.env` 配置文件
+### 2. `.env` 配置文件
 
 用任意文本编辑器打开 `.env`（macOS 可用 TextEdit，Windows 用记事本），按实际情况填写：
 
@@ -127,7 +123,7 @@ nano ./music-worker/.env
 MAIN_SERVICE_URL=https://admin.hostmails.de
 
 # 专辑下载保存目录（使用你本地电脑的绝对路径）
-DOWNLOAD_DIR=/home/downloads
+DOWNLOAD_DIR=/home/download
 
 # Worker 本地监听端口（默认 36501，一般不需要修改）
 PORT=36501
@@ -139,15 +135,11 @@ SCHEDULER_INTERVAL_MS=10000
 **注意事项：**
 - `MAIN_SERVICE_URL` 末尾**不要加斜杠**
 - `DOWNLOAD_DIR` 使用绝对路径，目录需要存在（若不存在请先创建）
-- Windows 路径示例：`DOWNLOAD_DIR=C:/Users/yourname/Music/downloads`
 
 创建下载目录（若不存在）：
 ```bash
 # macOS / Linux
-mkdir -p /home/yourname/downloads
-
-# Windows（命令提示符）
-mkdir C:\Users\yourname\Music\downloads
+mkdir -p /home/download
 ```
 
 ---

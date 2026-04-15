@@ -42,20 +42,17 @@ brew install node
 node --version   # 应显示 v22.x.x 或更高
 ```
 
-### Linux (Ubuntu/Debian)
+### Linux (Ubuntu/Debian, 默认使用root账号)
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs
+apt install build-essential libssl-dev && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
-node --version
+nvm install v24.12.0
+npm install -g pm2
 ```
-
-### Windows
-
-1. 访问 [nodejs.org](https://nodejs.org/) 下载 LTS 安装包（.msi 文件）
-2. 双击安装，全程默认下一步
-3. 打开命令提示符（Win + R，输入 `cmd`），运行 `node --version` 验证
 
 ---
 
@@ -79,24 +76,25 @@ brew install sox mktorrent flac ffmpeg
 ### Linux (Ubuntu/Debian)
 
 ```bash
-sudo apt install -y sox mktorrent flac ffmpeg
+apt install -y sox mktorrent flac ffmpeg
 ```
 
 ---
 
 ## 四、一键下载 Worker 文件（推荐）
 
-在 Linux 服务器或 macOS 终端中，执行以下命令即可自动下载最新版本的全部文件，并在当前目录下生成 `music-worker` 文件夹：
+在 Linux 服务器或 macOS 终端中，首次执行以下命令即可自动下载最新版本的全部文件，并在当前目录下生成 `music-worker` 文件夹：
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh)
 ```
 
-下载完成后，进入目录编辑配置文件：
+下载完成后，进入目录编辑配置文件（非必要无需编辑修改）：
 
 ```bash
 nano ./music-worker/.env
 ```
+
 
 如需手动下载文件，请参考下一节。
 
@@ -114,7 +112,7 @@ nano ./music-worker/.env
 └── .env
 ```
 
-### 2. `.env` 配置文件
+### 2. 编辑 `.env` 配置文件
 
 用任意文本编辑器打开 `.env`（macOS 可用 TextEdit，Windows 用记事本），按实际情况填写：
 
@@ -123,7 +121,7 @@ nano ./music-worker/.env
 MAIN_SERVICE_URL=https://admin.hostmails.de
 
 # 专辑下载保存目录（使用你本地电脑的绝对路径）
-DOWNLOAD_DIR=/home/download
+DOWNLOAD_DIR=/home/downloads
 
 # Worker 本地监听端口（默认 36501，一般不需要修改）
 PORT=36501
@@ -135,11 +133,15 @@ SCHEDULER_INTERVAL_MS=10000
 **注意事项：**
 - `MAIN_SERVICE_URL` 末尾**不要加斜杠**
 - `DOWNLOAD_DIR` 使用绝对路径，目录需要存在（若不存在请先创建）
+- Windows 路径示例：`DOWNLOAD_DIR=C:/Users/yourname/Music/downloads`
 
 创建下载目录（若不存在）：
 ```bash
 # macOS / Linux
-mkdir -p /home/download
+mkdir -p /home/yourname/downloads
+
+# Windows（命令提示符）
+mkdir C:\Users\yourname\Music\downloads
 ```
 
 ---
@@ -277,20 +279,16 @@ Worker 会按顺序**逐张下载**，下载完成后自动生成频谱图和种
 
 ## 十、更新 Worker
 
-管理员发布新版本后，在 `music-worker` 目录的**上级目录**重新执行一键脚本，会自动覆盖 `music-worker.js` 和 `.env`（你对 `.env` 的自定义修改会被覆盖，请提前备份）：
+管理员发布新版本后，在 `music-worker` 目录的**上级目录**重新执行一键命令，会自动覆盖 `music-worker.js` 和 `.env`（你对 `.env` 的自定义修改会被覆盖，请提前备份），完成重启服务：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh)
+pm2 delete music-upload-worker 2>/dev/null || true && cd ~/ && rm -rf ~/music-worker && bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh) && cd ~/music-worker && pm2 start music-worker.js --name music-upload-worker && pm2 logs music-upload-worker
 ```
 
-更新完成后重启 Worker：
+查看服务日志：
 
 ```bash
-# 如果使用 PM2
-pm2 restart music-upload-worker
-
-# 如果直接 node 运行，先 Ctrl+C 停止，再重新运行
-cd music-worker && node music-worker.js
+pm2 logs music-upload-worker
 ```
 
 > 如需保留 `.env` 自定义配置，更新前先备份：`cp music-worker/.env music-worker/.env.bak`，更新后将自定义项补回。

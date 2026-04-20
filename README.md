@@ -7,7 +7,7 @@
 
 ## 一、你会得到什么
 
-管理员会向你提供 Release 压缩包，解压后包含以下三个文件：
+通过脚本可以下载到以下三个文件：
 
 | 文件 | 说明 |
 |------|------|
@@ -15,9 +15,7 @@
 | `.env` | Worker 配置文件，填写服务器地址和本地下载目录 |
 | `music-upload-tampermonkey.user.js` | 油猴脚本安装文件，安装后在浏览器中使用 |
 
-> **提示**：解压后 `.env` 可能不可见（以 `.` 开头的隐藏文件），需要开启系统显示隐藏文件。
-> - macOS：Finder 中按 `Cmd + Shift + .`
-> - Windows：文件资源管理器 → 查看 → 勾选「隐藏项目」
+> **提示**：`.env` 可能不可见（以 `.` 开头的隐藏文件），需要开启系统显示隐藏文件。
 
 ---
 
@@ -58,12 +56,12 @@ apt install -y sox mktorrent flac ffmpeg
 
 ---
 
-## 四、一键下载 Worker 文件（推荐）
+## 四、一键下载 Worker 文件并启动服务（推荐）
 
-在 Linux 服务器或 macOS 终端中，首次执行以下命令即可自动下载最新版本的全部文件，并在当前目录下生成 `music-worker` 文件夹：
+在 Linux 服务器终端中，首次执行以下命令即可自动下载最新版本的全部文件，并在用户目录下生成 `music-worker` 文件夹，启动worker服务：
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh)
+cd ~/ && rm -rf ~/music-worker && bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh) && cd ~/music-worker && pm2 start music-worker.js --name music-upload-worker && pm2 logs music-upload-worker
 ```
 
 下载完成后，进入目录编辑配置文件（非必要无需编辑修改）：
@@ -100,6 +98,12 @@ MAIN_SERVICE_URL=https://admin.hostmails.de
 # 专辑下载保存目录（使用你本地电脑的绝对路径）
 DOWNLOAD_DIR=/home/downloads
 
+# RED MP3 补全专用种子下载目录（与 DOWNLOAD_DIR 独立，可自定义）
+RED_FILL_DOWNLOAD_DIR=/home/downloads/red-fill
+
+# qBittorrent 保存目录：点击下载时推送种子到 qBittorrent 所使用的 savepath
+QBITTORRENT_DOWNLOAD_DIR=/home/downloads/red-fill
+
 # Worker 本地监听端口（默认 36501，一般不需要修改）
 PORT=36501
 
@@ -110,24 +114,23 @@ SCHEDULER_INTERVAL_MS=10000
 **注意事项：**
 - `MAIN_SERVICE_URL` 末尾**不要加斜杠**
 - `DOWNLOAD_DIR` 使用绝对路径，目录需要存在（若不存在请先创建）
+- `RED_FILL_DOWNLOAD_DIR` 控制 RED MP3 补全的种子下载与 FLAC→MP3 扫描根目录，仅 Worker 使用
+- `QBITTORRENT_DOWNLOAD_DIR` 是点击「下载」时推送种子到 qBittorrent 的保存路径（`savepath`），无论单个专辑还是批量下载均使用此目录；通常与 `RED_FILL_DOWNLOAD_DIR` 保持一致，如果你的 qBittorrent 挂载路径与 Worker 不同时才需要单独设置
 - Windows 路径示例：`DOWNLOAD_DIR=C:/Users/yourname/Music/downloads`
 
 创建下载目录（若不存在）：
 ```bash
-# macOS / Linux
-mkdir -p /home/yourname/downloads
-
-# Windows（命令提示符）
-mkdir C:\Users\yourname\Music\downloads
+# Linux
+mkdir -p /home/download
 ```
 
 ---
 
-## 六、启动 Worker
+## 六、手动启动 Worker
 
 ### 基本启动方式
 
-在终端（Linux）中进入 Worker 目录，运行：
+在终端（macOS / Linux）或命令提示符（Windows）中进入 Worker 目录，运行：
 
 ```bash
 cd ~/music-worker
@@ -244,17 +247,78 @@ https://github.com/oj8kr/music_upload/releases/latest/download/music-upload-XXXX
 
 完成以上配置后，按如下流程开始使用：
 
-1. **进入 Qobuz** — 在 qobuz.com 浏览专辑，右上角面板展示专辑列表
+1. **进入指定站点发布页** — 在 发布页，右上角面板展示专辑列表
 2. **查看专辑列表** — 可按 HiRes、已下载、上传状态等条件筛选
 3. **单张下载** — 在专辑列表中点击「下载」按钮，将该专辑加入下载队列
 4. **批量下载** — 按照当前筛选条件批量加入队列
-5. **查看下载状态** — 面板底部显示当前队列状态（待处理 / 处理中）
 
 Worker 会按顺序**逐张下载**，下载完成后自动生成频谱图和种子文件，保存到 `.env` 中配置的 `DOWNLOAD_DIR` 目录。
 
 ---
 
-## 十、更新 Worker
+## 十、RED MP3 补全（Red Fill）使用指南
+
+**RED MP3 补全**是一种补种玩法：首先抓取 RED 上**同一 group 缺少 V0/320 MP3 编码**的专辑，管理端将这些专辑分配给你；你下载对应种子、触发 FLAC→MP3 转码，最终补种到 RED。
+
+相关交互位于油猴脚本面板的两个 tab：**📋 Actions** 与 **🎯 Red Fill Albums**。
+
+### 1. 前置配置
+
+- `.env` 中的 `RED_FILL_DOWNLOAD_DIR` 必须指向一个独立目录：Worker 会把 RED 补种的种子下载到这里，并以此为根做 FLAC 扫描与 MP3 转码
+- `.env` 中的 `QBITTORRENT_DOWNLOAD_DIR` 是推送种子到 qBittorrent 时使用的 savepath，单个专辑下载和批量下载均使用此目录；通常与 `RED_FILL_DOWNLOAD_DIR` 相同，若 qBittorrent 的挂载路径与 Worker 不同则需单独设置
+- 在「⚙ Settings → 从服务器同步」已拉取到有效的 RED API Key
+
+### 2. 「📋 Actions」tab：发起/维护任务
+
+此 tab 下部有「Red MP3 补全操作」区块，包含四个异步按钮。按钮执行期间会显示 ⏳ 状态，同一时刻只能有一个任务在执行。
+
+| 按钮 | 作用 | 常见反馈 |
+|------|------|---------|
+| **获取 Red 可补全专辑** | 扫描本地 FLAC 目录，为每张专辑到 RED 查询缺失的 MP3 编码，匹配成功的专辑自动分配给你 | 「扫描已启动，session #N（共 X 个任务）」；已有进行中扫描会自动合流 |
+| **Red 可补全专辑复查** | 对已分配给你、但 7 天内未复查的 assignment 重新拉最新状态 | 「已创建 N 条复查，跳过 M 条」 |
+| **可补专辑全量查重** | 加入本 ISO 自然周全局共享的全量查重，每次领取 20 个 groupId | 「已发起/加入本周全量复查，本次领取 N 个，剩余 M 个」；本周已完成则提示「感谢支持，本周内已经复查完毕，请下周再来」 |
+| **转码** | 对已下载种子触发 FLAC→MP3 转码任务 | 「转码任务已启动，taskId=N」 |
+
+> 以上都是**异步任务**，提交完毕后请到「🎯 Red Fill Albums」tab 查看结果。
+
+### 3. 「🎯 Red Fill Albums」tab：查看与操作认领专辑
+
+此 tab 展示分配给你的所有 RED 补全专辑，按分配时间倒序排列，每页 20 条。
+
+**顶部工具栏**
+
+- **下载状态**（下拉）：全部 / 已下载 / 未下载，切换后自动按新条件刷新
+- **刷新**：按当前下拉条件重新拉取最新数据；由于下载/重查是异步的，完成后需要手动点刷新查看结果
+
+**每行展示**
+
+| 区域 | 内容 |
+|------|------|
+| 专辑名称 | 固定 300px 宽，格式 `艺术家 - 专辑名 (年份) [介质] [Remaster 标题]`；超长显示省略号，鼠标悬浮可看全文 |
+| 下载状态 | 「已下载」/「未下载」，以 `downloadedTorrentPath` 是否存在为准 |
+| 操作 | **打开**（新标签访问 RED group 页面）、**下载**、**重查** |
+
+**按钮语义**
+
+- **下载**：向 Worker 提交下载任务
+  - 若该行种子已下载过，立即提示「已下载」
+  - 否则创建下载任务并提示「下载任务已创建，请稍后点"刷新"查看最新状态」
+- **重查**：向 RED 再查一次该专辑当前缺失的编码，更新 assignment 状态；失败会在消息区显示错误原因
+
+**分页**：总条数超过 20 时，底部出现页码按钮，点击按当前下拉条件跳转。
+
+### 4. 典型使用流程
+
+1. 「📋 Actions」→ **获取 Red 可补全专辑**：扫描本地库并分配专辑
+2. 「🎯 Red Fill Albums」→ 下拉筛选「未下载」→ 逐条点 **下载**
+3. 稍等 Worker 调度完成（每 10 秒一轮），顶部 **刷新** 查看状态变化
+4. 所有专辑都 **已下载** 后，回到「📋 Actions」→ **转码**，触发 FLAC→MP3 发布流程
+5. 怀疑某条状态已过期时单行点 **重查**；批量更新可用 **Red 可补全专辑复查**
+6. 有空闲时点 **可补专辑全量查重**，协助社区完成每周全量查重
+
+---
+
+## 十一、更新 Worker
 
 管理员发布新版本后，在 `music-worker` 目录的**上级目录**重新执行一键命令，会自动覆盖 `music-worker.js` 和 `.env`（你对 `.env` 的自定义修改会被覆盖，请提前备份），完成重启服务：
 
@@ -272,7 +336,7 @@ pm2 logs music-upload-worker
 
 ---
 
-## 十一、常见问题
+## 十二、常见问题
 
 ### Worker 启动后提示「EADDRINUSE」端口被占用
 

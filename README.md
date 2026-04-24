@@ -206,7 +206,47 @@ https://github.com/oj8kr/music_upload/releases/latest/download/music-upload-XXXX
 
 ---
 
-## 八、配置油猴脚本
+## 八、配置后管系统（Qobuz 信息与授权）
+
+管理员为你创建账号后，需要登录后管系统填写 Qobuz 账号信息并完成 OAuth 授权，Worker 才能代你从 Qobuz 下载音乐。
+
+**后管地址**：[https://admin.hostmails.de/admin/dashboard](https://admin.hostmails.de/admin/dashboard)
+
+使用管理员分配的用户名和密码登录。
+
+### 1. 填写 Qobuz 账号信息
+
+登录后点击页面中的「**我的配置**」，进入配置页面填写：
+
+| 字段 | 说明 |
+|------|------|
+| Qobuz 邮箱 | 你的 Qobuz 账号邮箱地址 |
+| Qobuz 密码 | 你的 Qobuz 账号密码（留空则不修改已保存的密码） |
+
+填写完成后点击「**保存配置**」。
+
+> **安全说明**：密码在提交前已加密，服务器端也以加密形式存储，不会明文保留。
+
+### 2. 完成 Qobuz OAuth 授权
+
+Qobuz 下载还需要一个 OAuth 授权码（与账号密码独立，系统自动获取无需手动填写），请按如下步骤操作：
+
+1. 回到**仪表板**（Dashboard）
+2. 点击「**Qobuz 授权**」按钮 — 浏览器新标签页会打开 Qobuz 的授权页面
+3. 在 Qobuz 页面登录你的账号并点击同意授权
+4. Qobuz 授权完成后会将你重定向回本系统的登录页，页面出现绿色提示：
+   > **「Qobuz 授权码已捕获，登录后将自动保存。」**
+5. 输入用户名和密码登录（若此时已处于登录状态则无需此步）
+6. 登录后自动跳转到仪表板，页面弹出成功提示：
+   > **「Qobuz 授权码已保存」**
+
+至此 Qobuz 配置全部完成。可在「我的配置」页面的「**Qobuz OAuth 授权码**」字段确认授权码已填入（该字段只读，自动维护）。
+
+> **注意**：OAuth 授权码有有效期。若 Worker 下载时报认证失败，请重新执行本节第 2 步完成授权。
+
+---
+
+## 九、配置油猴脚本
 
 安装脚本后，访问 [qobuz.com](https://play.qobuz.com/) 的专辑页面，右上角会出现一个浮动面板。
 
@@ -218,19 +258,23 @@ https://github.com/oj8kr/music_upload/releases/latest/download/music-upload-XXXX
 |------|------|------|
 | Worker URL | 你本地 Worker 的地址 | `http://localhost:36501` |
 | API Key | 向管理员申请的 API Key | `9f0f88xxxxxxxx` |
+| PTpimg Key | ptpimg.me 图床 API Key，用于上传封面和频谱图（可选） | `xxxxxxxx-xxxx-…` |
 
 填写完成后点击「保存」。
 
 > **API Key** 是你在系统中的身份标识，由管理员在注册你的账号时分配。如果忘记，请联系管理员重置。
+>
+> **PTpimg Key** 不配置时可正常触发下载。但在 PT 上传页点击「加载」时，若该专辑的封面或频谱图尚未转换为 ptpimg 格式，脚本会弹出提示阻止操作——此时需要先填写 PTpimg Key 再重试。一旦某张专辑完成转换后，后续加载该专辑无需再提供 Key。
 
 ### 2. 从服务器同步配置
 
 首次使用时，点击「从服务器同步」按钮，脚本会从主服务拉取以下配置（无需手动填写）：
 
-- Qobuz 账号（邮箱 + 密码）
-- PT 站 API Key（Red、Ops、GGN 等）
+- Qobuz 账号（邮箱 + 密码）— 即第八节在后管系统中填写的信息
 
-> 上述配置由管理员在主服务后台统一管理，你只需同步即可。
+> 请确保已完成**第八节**的 Qobuz 配置再点击「从服务器同步」，否则同步到的账号信息会为空。
+>
+> PT 站 API Key（Red、Ops、GGN 等）只在本设置页手动填写并保存到浏览器缓存。
 
 ### 3. 验证连接
 
@@ -243,7 +287,7 @@ https://github.com/oj8kr/music_upload/releases/latest/download/music-upload-XXXX
 
 ---
 
-## 九、首次使用流程
+## 十、首次使用流程
 
 完成以上配置后，按如下流程开始使用：
 
@@ -256,7 +300,7 @@ Worker 会按顺序**逐张下载**，下载完成后自动生成频谱图和种
 
 ---
 
-## 十、RED MP3 补全（Red Fill）使用指南
+## 十一、RED MP3 补全（Red Fill）使用指南
 
 **RED MP3 补全**是一种补种玩法：首先抓取 RED 上**同一 group 缺少 V0/320 MP3 编码**的专辑，管理端将这些专辑分配给你；你下载对应种子、触发 FLAC→MP3 转码，最终补种到 RED。
 
@@ -318,7 +362,7 @@ Worker 会按顺序**逐张下载**，下载完成后自动生成频谱图和种
 
 ---
 
-## 十一、更新 Worker
+## 十二、更新 Worker
 
 管理员发布新版本后，在 `music-worker` 目录的**上级目录**重新执行一键命令，会自动覆盖 `music-worker.js` 和 `.env`（你对 `.env` 的自定义修改会被覆盖，请提前备份），完成重启服务：
 
@@ -336,7 +380,7 @@ pm2 logs music-upload-worker
 
 ---
 
-## 十二、常见问题
+## 十三、常见问题
 
 ### Worker 启动后提示「EADDRINUSE」端口被占用
 
@@ -361,6 +405,16 @@ pm2 logs music-upload-worker
 ls -la /home/yourname/downloads   # 确认目录存在
 touch /home/yourname/downloads/test.txt && rm /home/yourname/downloads/test.txt  # 确认有写权限
 ```
+
+### Worker 下载时报 Qobuz 认证失败 / 401
+
+OAuth 授权码已过期。重新登录后管系统（https://admin.hostmails.de/admin/dashboard），在仪表板点击「Qobuz 授权」，完成第八节第 2 步的授权流程即可。
+
+### 点击「加载」时提示「未配置 PTpimg Key」
+
+该专辑的封面或频谱图尚未转换为 ptpimg 格式，转换时需要 PTpimg Key。
+
+解决方法：在设置中填写 PTpimg Key 后，重新点击「加载」即可。转换完成后结果会写入数据库，之后加载同一张专辑无需再提供 Key。
 
 ### API Key 不正确 / 401 错误
 

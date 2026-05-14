@@ -62,7 +62,7 @@ apt install -y sox mktorrent flac ffmpeg
 在 Linux 服务器终端中，首次执行以下命令即可自动下载最新版本的全部文件，并在用户目录下生成 `music-worker` 文件夹，启动worker服务：
 
 ```bash
-cd ~/ && rm -rf ~/music-worker && bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh) && cd ~/music-worker && pm2 start music-worker.js --name music-upload-worker && pm2 logs music-upload-worker
+cd ~/ && rm -rf ~/music-worker && bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh) && cd ~/music-worker && pm2 delete music-upload-worker 2>/dev/null; pm2 start music-worker.js --name music-upload-worker && pm2 save && pm2 logs music-upload-worker
 ```
 
 安装完成后，会在打印日志界面，可以ctrl+c退出，进入目录编辑配置文件（非必要无需编辑修改，qBittorrent下载地址需要配置）：

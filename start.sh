@@ -101,9 +101,11 @@ done
 ENV_FILE="${TARGET_DIR}/.env"
 DOWNLOAD_DIR=""
 RED_FILL_DOWNLOAD_DIR=""
+OPS_FILL_DOWNLOAD_DIR=""
 if [ -f "$ENV_FILE" ]; then
   DOWNLOAD_DIR=$(grep -E '^DOWNLOAD_DIR=' "$ENV_FILE" | head -1 | sed 's/^DOWNLOAD_DIR=//' | tr -d '"'"'"' ')
   RED_FILL_DOWNLOAD_DIR=$(grep -E '^RED_FILL_DOWNLOAD_DIR=' "$ENV_FILE" | head -1 | sed 's/^RED_FILL_DOWNLOAD_DIR=//' | tr -d '"'"'"' ')
+  OPS_FILL_DOWNLOAD_DIR=$(grep -E '^OPS_FILL_DOWNLOAD_DIR=' "$ENV_FILE" | head -1 | sed 's/^OPS_FILL_DOWNLOAD_DIR=//' | tr -d '"'"'"' ')
 fi
 
 if [ -n "$DOWNLOAD_DIR" ]; then
@@ -130,6 +132,24 @@ if [ -n "$RED_FILL_DOWNLOAD_DIR" ]; then
   info "RED 补全目录已就绪：${RED_FILL_DOWNLOAD_DIR}"
 else
   warn "未在 .env 中找到 RED_FILL_DOWNLOAD_DIR 且 DOWNLOAD_DIR 缺失，跳过创建 RED 补全目录（若不需要 RED 补全功能可忽略）。"
+fi
+
+# 若 .env 未配置 OPS_FILL_DOWNLOAD_DIR，自动基于 DOWNLOAD_DIR 派生 <DOWNLOAD_DIR>/ops-fill
+if [ -z "$OPS_FILL_DOWNLOAD_DIR" ] && [ -n "$DOWNLOAD_DIR" ] && [ -f "$ENV_FILE" ]; then
+  OPS_FILL_DOWNLOAD_DIR="${DOWNLOAD_DIR%/}/ops-fill"
+  {
+    echo ""
+    echo "# OPS MP3 补全专用种子下载目录（由 start.sh 自动生成）"
+    echo "OPS_FILL_DOWNLOAD_DIR=${OPS_FILL_DOWNLOAD_DIR}"
+  } >> "$ENV_FILE"
+  info ".env 已追加 OPS_FILL_DOWNLOAD_DIR=${OPS_FILL_DOWNLOAD_DIR}"
+fi
+
+if [ -n "$OPS_FILL_DOWNLOAD_DIR" ]; then
+  mkdir -p "$OPS_FILL_DOWNLOAD_DIR"
+  info "OPS 补全目录已就绪：${OPS_FILL_DOWNLOAD_DIR}"
+else
+  warn "未在 .env 中找到 OPS_FILL_DOWNLOAD_DIR 且 DOWNLOAD_DIR 缺失，跳过创建 OPS 补全目录（若不需要 OPS 补全功能可忽略）。"
 fi
 
 # ── 完成提示 ─────────────────────────────────────────────────────────────────

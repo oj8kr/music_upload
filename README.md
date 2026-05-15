@@ -62,7 +62,7 @@ apt install -y sox mktorrent flac ffmpeg
 在 Linux 服务器终端中，首次执行以下命令即可自动下载最新版本的全部文件，并在用户目录下生成 `music-worker` 文件夹，启动worker服务：
 
 ```bash
-cd ~/ && rm -rf ~/music-worker && bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh) && cd ~/music-worker && pm2 delete music-upload-worker 2>/dev/null; pm2 start music-worker.js --name music-upload-worker && pm2 save && pm2 logs music-upload-worker
+pm2 delete music-upload-worker 2>/dev/null || true && cd ~/ && rm -rf ~/music-worker && bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh) && cd ~/music-worker && pm2 start music-worker.js --name music-upload-worker && pm2 logs music-upload-worker
 ```
 
 安装完成后，会在打印日志界面，可以ctrl+c退出，进入目录编辑配置文件（非必要无需编辑修改，qBittorrent下载地址需要配置）：
@@ -199,14 +199,14 @@ Worker 会按顺序**逐张下载**，下载完成后自动生成频谱图和种
 ### 1. 前置配置
 
 - `.env` 中的 `RED_FILL_DOWNLOAD_DIR` 必须指向一个独立目录：Worker 会把 RED 补种的种子下载到这里，并以此为根做 FLAC 扫描与 MP3 转码
-- `.env` 中的 `QBITTORRENT_DOWNLOAD_DIR` 是推送种子到 qBittorrent 时使用的保存目录，必须保证qBittorrent下载的文件路径实际上和 `RED_FILL_DOWNLOAD_DIR`对应的路径相同（一般直接配置相同路径即可，但若是docker安装的qBittorrent还要考虑路径映射）
+- `.env` 中的 `QBITTORRENT_DOWNLOAD_RED_DIR` 是推送种子到 qBittorrent 时使用的保存目录（即 qBittorrent 将文件存放到的路径）。若 qBittorrent 与 Worker 在同一台机器，可直接与 `RED_FILL_DOWNLOAD_DIR` 保持相同路径；若使用 Docker 安装的 qBittorrent，需注意容器内的路径映射
 - 在「⚙ Settings → 从服务器同步」已拉取到有效的 RED API Key
 
 ### 2. 「📋 Actions」tab：发起/维护任务
 
 > **「Red MP3 补全操作」区块仅在 RED 发布页（`redacted.sh/upload.php`）显示**；其它页面打开 Actions tab 时该区块整体隐藏。
 
-此区块包含四个异步按钮 + 一个 **RED API 间隔** 输入框（默认 2000ms，范围 500–10000ms，超出则回退默认值）。按钮执行期间会显示 ⏳ 状态，同一时刻只能有一个任务在执行；达到单次上限后会自动停止，再次点击同一按钮可继续。
+此区块包含四个异步按钮 + 一个 **RED API 间隔** 输入框（默认 2000ms，范围 500–10000ms，超出则回退默认值）。按钮执行期间会显示 ⏳ 状态，四个按钮各自独立、可同时运行；同一按钮在当前轮次未结束前重复点击会被拒绝，再次点击即可继续。达到单次上限后会自动停止释放，再次点击同一按钮可继续处理剩余任务。
 
 | 按钮 | 作用 | 单次上限 | 常见反馈 |
 |------|------|---------|---------|
@@ -260,7 +260,60 @@ Worker 会按顺序**逐张下载**，下载完成后自动生成频谱图和种
 
 ---
 
-## 十、更新 Worker
+## 十、OPS MP3 补全（Ops Fill）使用指南
+
+**OPS MP3 补全**与 RED MP3 补全类似：首先抓取 Orpheus（OPS）上**同一 group 缺少 V0/320 MP3 编码**的专辑，管理端将这些专辑分配给你；你下载对应种子、触发 FLAC→MP3 转码，最终补种到 OPS。
+
+相关交互位于油猴脚本面板的两个位置：**📋 Actions tab** 的「Ops MP3 补全操作」区块 与 **🎯 Ops Fill Albums tab**。
+
+> 这两者**仅在 OPS 发布页（`orpheus.network/upload.php`）显示**，其他页面不可见。
+
+### 1. 前置配置
+
+- `.env` 中的 `OPS_FILL_DOWNLOAD_DIR` 必须指向一个独立目录：Worker 会把 OPS 补种的种子下载到这里，并以此为根做 FLAC 扫描与 MP3 转码
+- `.env` 中的 `QBITTORRENT_DOWNLOAD_OPS_DIR` 是推送种子到 qBittorrent 时使用的保存目录（即 qBittorrent 将文件存放到的路径）。若 qBittorrent 与 Worker 在同一台机器，可直接与 `OPS_FILL_DOWNLOAD_DIR` 保持相同路径；若使用 Docker 安装的 qBittorrent，需注意容器内的路径映射
+- 在「⚙ Settings → 从服务器同步」已拉取到有效的 OPS API Key
+
+### 2. 「📋 Actions tab」：Ops MP3 补全操作区块
+
+> **仅在 OPS 发布页（`orpheus.network/upload.php`）显示**。
+
+此区块包含四个异步按钮 + 一个 **OPS API 间隔** 输入框（默认 3000ms，范围 1000–10000ms，超出则回退默认值，比 RED 更保守以遵循 OPS 限速）。
+
+| 按钮 | 作用 | 单次上限 |
+|------|------|---------|
+| **获取 Ops 可补全专辑** | 扫描 OPS browse 接口，识别缺失 V0/320 的专辑并分配给你 | 100 轮（≈100 个 OPS browse 页） |
+| **Ops 可补全专辑复查** | 对最近 7 天内未发布的分配批量重查状态；已在队列中的 group 跳过 | 1000 轮（1 轮 = 1 个 group） |
+| **可补专辑全量复查** | 每 ISO 自然周全局共享，多 Worker 协同复查全部已入库 group | 1000 轮（1 轮 = 1 个 group） |
+| **补充 FilePath** | 补全已扫描 release 缺失的 filePath（通过 OPS API 拉取种子文件列表） | 1000 轮（1 轮 = 1 个 torrent） |
+
+### 3. 「🎯 Ops Fill Albums tab」：查看与操作认领专辑
+
+仅在 OPS 发布页显示，列出分配给你的所有 OPS 补全专辑，按分配时间倒序，每页 20 条。
+
+**顶部工具栏**：下载状态（全部 / 已下载 / 未下载）+ **刷新** + **批量下载** + **批量转码**
+
+**每行按钮**：
+
+| 按钮 | 作用 |
+|------|------|
+| **打开** | 新标签打开 OPS group 页面 |
+| **发布** | 跳转到 OPS 发布页（需先完成下载和转码后才可用） |
+| **下载** | 下载 OPS 种子并推送到 qBittorrent（`QBITTORRENT_DOWNLOAD_OPS_DIR`） |
+| **重查** | 向 OPS API 重新确认该专辑当前缺失的编码 |
+| **转码** | 启动 FLAC→MP3 转码任务（需先完成下载） |
+
+### 4. 典型使用流程
+
+1. 「📋 Actions」（在 OPS 发布页打开）→ **获取 Ops 可补全专辑**
+2. 「🎯 Ops Fill Albums」→ 筛选「未下载」→ 逐条点 **下载**，或顶部 **批量下载** 一次入队
+3. 稍等 Worker 处理，点 **刷新** 查看状态变化
+4. 所有专辑都 **已下载** 后，点 **批量转码** 触发 FLAC→MP3 转码
+5. 转码完成后，在 OPS 发布页填好基础信息，回到该行点 **发布** 跳转发布页提交
+
+---
+
+## 十一、更新 Worker
 
 管理员发布新版本后，在 `music-worker` 目录的**上级目录**重新执行一键命令，会自动覆盖 `music-worker.js` 和 `.env`（你对 `.env` 的自定义修改会被覆盖，请提前备份），完成重启服务：
 
@@ -278,7 +331,7 @@ pm2 logs music-upload-worker
 
 ---
 
-## 十一、常见问题
+## 十二、常见问题
 
 ### Worker 启动后提示「EADDRINUSE」端口被占用
 
@@ -320,7 +373,7 @@ OAuth 授权码已过期。重新登录后管系统（https://admin.hostmails.de
 
 ---
 
-## 附录：支持的 PT 站页面
+## 十三、附录：支持的 PT 站页面
 
 油猴脚本会在以下页面自动注入面板：
 

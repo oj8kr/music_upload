@@ -62,7 +62,7 @@ apt install -y sox mktorrent flac ffmpeg
 在 Linux 服务器终端中，首次执行以下命令即可自动下载最新版本的全部文件，并在用户目录下生成 `music-worker` 文件夹，启动worker服务：
 
 ```bash
-pm2 delete music-upload-worker 2>/dev/null || true && cd ~/ && rm -rf ~/music-worker && bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh) && cd ~/music-worker && pm2 start music-worker.js --name music-upload-worker && pm2 logs music-upload-worker
+pm2 delete music-upload-worker 2>/dev/null; pkill -f '[m]usic-worker' 2>/dev/null; fuser -k 36501/tcp 2>/dev/null; cd ~/ && rm -rf ~/music-worker && bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh) && cd ~/music-worker && pm2 start music-worker.js --name music-upload-worker && pm2 save && pm2 logs music-upload-worker
 ```
 
 安装完成后，会在打印日志界面，可以ctrl+c退出，进入目录编辑配置文件（非必要无需编辑修改，qBittorrent下载地址需要配置）：
@@ -154,16 +154,19 @@ Qobuz 下载还需要一个 OAuth 授权码（与账号密码独立，系统自�
 
 > **工作模式**（Settings 顶部下拉，持久化到浏览器）决定油猴面板打开后默认进入哪个 tab：
 > - **Qobuz Albums 模式**（默认）：油猴脚本启动后默认进入 **Albums** tab（即 Qobuz 专辑列表），适合日常下载 Qobuz
-> - **补充专辑模式**：脚本在 RED 发布页（`redacted.sh/upload.php`）加载时默认进入 **Red Fill Albums** tab；非 RED 发布页因该 tab 不存在自动回退到 **Albums** tab
+> - **Red 补充专辑模式**：脚本在 RED 发布页（`redacted.sh/upload.php`）加载时默认进入 **Red Fill Albums** tab；非 RED 发布页因该 tab 不存在自动回退到 **Albums** tab
+> - **Ops 补充专辑模式**：脚本在 OPS 发布页（`orpheus.network/upload.php`）加载时默认进入 **Ops Fill Albums** tab；非 OPS 发布页因该 tab 不存在自动回退到 **Albums** tab
 
-### 2. 从服务器同步配置
+### 2. 从服务器加载配置
 
-首次使用时，点击「从服务器同步」按钮，脚本会从主服务拉取以下配置（无需手动填写）：
+首次使用时，点击「从服务器加载」按钮，脚本会从主服务拉取以下配置（无需手动填写）：
 
-- Qobuz 账号（邮箱 + 密码）— 即在后管系统中填写的信息
+- 用户名、角色与 Qobuz 账号（邮箱 + 密码）— 即在后管系统中填写的信息
 
-> 请确保已完成Qobuz 配置再点击「从服务器同步」，否则同步到的账号信息会为空。
+> 请确保已完成 Qobuz 配置再点击「从服务器加载」，否则同步到的账号信息会为空。
 >
+> RED / OPS / GGN API Key、qBittorrent 连接信息和 PTpimg Key 不会由服务器加载；这些 PT / Worker 凭证仅保存在油猴脚本本地缓存中，需要在 Settings 手动填写。
+
 > PT 站 API Key（Red、Ops、GGN 等）等敏感信息只在油猴脚本设置页手动填写并保存到浏览器缓存。
 
 ### 3. 验证连接
@@ -181,12 +184,12 @@ Qobuz 下载还需要一个 OAuth 授权码（与账号密码独立，系统自�
 
 完成以上配置后，按如下流程开始使用：
 
-1. **打开油猴面板** — 在 Qobuz 网站任意专辑页（或在 RED 发布页若使用「补充专辑模式」），右上角浮动面板自动出现，默认进入 **Albums** tab 展示 Qobuz 专辑列表
+1. **打开油猴面板** — 在 Qobuz 专辑页（或在 RED/OPS 发布页使用对应补充专辑模式），右上角浮动面板自动出现，默认进入 **Albums** 或对应 Fill Albums tab
 2. **查看/筛选专辑列表** — 可按 HiRes、已下载、上传状态等条件筛选
 3. **单张下载** — 在专辑行点击「**下载**」（或对已下载过的专辑点「**强制下载**」清状态后重下）将该专辑加入下载队列
 4. **批量下载** — 顶部「**批量下载**」按当前筛选条件一次入队多张
 
-Worker 会按顺序**逐张下载**，下载完成后自动生成频谱图和种子文件，保存到 `.env` 中配置的 `DOWNLOAD_DIR` 目录。下载完成后专辑行内的「**加载 FLAC-16/24 / MP3-320 / V0 种子**」按钮可一键把对应种子注入到 RED 发布页的文件输入框（仅在 RED 发布页有效）。
+Worker 会按顺序**逐张下载 FLAC**，下载完成后自动生成频谱图和 FLAC 种子文件，保存到 `.env` 中配置的 `DOWNLOAD_DIR` 目录。FLAC 下载完成后，专辑行内「**加载 FLAC-16/24**」可注入对应种子；点击「**转 MP3**」并等待本地 MP3 320/V0 转码与制种完成后，「**加载 MP3-320 / V0**」才会出现。加载种子仅在 RED 发布页有效。
 
 ---
 
@@ -200,13 +203,13 @@ Worker 会按顺序**逐张下载**，下载完成后自动生成频谱图和种
 
 - `.env` 中的 `RED_FILL_DOWNLOAD_DIR` 必须指向一个独立目录：Worker 会把 RED 补种的种子下载到这里，并以此为根做 FLAC 扫描与 MP3 转码
 - `.env` 中的 `QBITTORRENT_DOWNLOAD_RED_DIR` 是推送种子到 qBittorrent 时使用的保存目录（即 qBittorrent 将文件存放到的路径）。若 qBittorrent 与 Worker 在同一台机器，可直接与 `RED_FILL_DOWNLOAD_DIR` 保持相同路径；若使用 Docker 安装的 qBittorrent，需注意容器内的路径映射
-- 在「⚙ Settings → 从服务器同步」已拉取到有效的 RED API Key
+- 在「⚙ Settings」本地填写有效的 RED API Key
 
 ### 2. 「📋 Actions」tab：发起/维护任务
 
 > **「Red MP3 补全操作」区块仅在 RED 发布页（`redacted.sh/upload.php`）显示**；其它页面打开 Actions tab 时该区块整体隐藏。
 
-此区块包含四个异步按钮 + 一个 **RED API 间隔** 输入框（默认 2000ms，范围 500–10000ms，超出则回退默认值）。按钮执行期间会显示 ⏳ 状态，四个按钮各自独立、可同时运行；同一按钮在当前轮次未结束前重复点击会被拒绝，再次点击即可继续。达到单次上限后会自动停止释放，再次点击同一按钮可继续处理剩余任务。
+此区块包含四个异步按钮 + 一个 **RED API 间隔** 输入框（默认 5000ms，范围 2000–20000ms，超出则回退默认值）。按钮执行期间会显示 ⏳ 状态，四个按钮各自独立、可同时运行；同一按钮在当前轮次未结束前重复点击会被拒绝，再次点击即可继续。达到单次上限后会自动停止释放，再次点击同一按钮可继续处理剩余任务。
 
 | 按钮 | 作用 | 单次上限 | 常见反馈 |
 |------|------|---------|---------|
@@ -272,13 +275,13 @@ Worker 会按顺序**逐张下载**，下载完成后自动生成频谱图和种
 
 - `.env` 中的 `OPS_FILL_DOWNLOAD_DIR` 必须指向一个独立目录：Worker 会把 OPS 补种的种子下载到这里，并以此为根做 FLAC 扫描与 MP3 转码
 - `.env` 中的 `QBITTORRENT_DOWNLOAD_OPS_DIR` 是推送种子到 qBittorrent 时使用的保存目录（即 qBittorrent 将文件存放到的路径）。若 qBittorrent 与 Worker 在同一台机器，可直接与 `OPS_FILL_DOWNLOAD_DIR` 保持相同路径；若使用 Docker 安装的 qBittorrent，需注意容器内的路径映射
-- 在「⚙ Settings → 从服务器同步」已拉取到有效的 OPS API Key
+- 在「⚙ Settings」本地填写有效的 OPS API Key
 
 ### 2. 「📋 Actions tab」：Ops MP3 补全操作区块
 
 > **仅在 OPS 发布页（`orpheus.network/upload.php`）显示**。
 
-此区块包含四个异步按钮 + 一个 **OPS API 间隔** 输入框（默认 3000ms，范围 1000–10000ms，超出则回退默认值，比 RED 更保守以遵循 OPS 限速）。
+此区块包含四个异步按钮 + 一个 **OPS API 间隔** 输入框（默认 5000ms，范围 2000–20000ms，超出则回退默认值；Worker 端 PT 查重与 OPS Fill 共用同一个 OPS TokenBucket，以遵循 OPS 限速）。
 
 | 按钮 | 作用 | 单次上限 |
 |------|------|---------|
@@ -318,7 +321,7 @@ Worker 会按顺序**逐张下载**，下载完成后自动生成频谱图和种
 管理员发布新版本后，在 `music-worker` 目录的**上级目录**重新执行一键命令，会自动覆盖 `music-worker.js` 和 `.env`（你对 `.env` 的自定义修改会被覆盖，请提前备份），完成重启服务：
 
 ```bash
-pm2 delete music-upload-worker 2>/dev/null || true && cd ~/ && rm -rf ~/music-worker && bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh) && cd ~/music-worker && pm2 start music-worker.js --name music-upload-worker && pm2 logs music-upload-worker
+pm2 delete music-upload-worker 2>/dev/null; pkill -f '[m]usic-worker' 2>/dev/null; fuser -k 36501/tcp 2>/dev/null; cd ~/ && rm -rf ~/music-worker && bash <(curl -fsSL https://raw.githubusercontent.com/oj8kr/music_upload/main/start.sh) && cd ~/music-worker && pm2 start music-worker.js --name music-upload-worker && pm2 save && pm2 logs music-upload-worker
 ```
 
 查看服务日志：
@@ -383,7 +386,6 @@ OAuth 授权码已过期。重新登录后管系统（https://admin.hostmails.de
 | Redacted (RED) | upload.php |
 | Orpheus (OPS) | upload.php |
 | DicMusic | upload.php |
-| GazelleGames (GGN) | upload.php |
 | PterClub | upload.php |
-| Open.cd | upload.php |
+| Open.cd | plugin_upload.php |
 | TJUPT | upload.php |

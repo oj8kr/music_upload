@@ -97,6 +97,12 @@ for ASSET in "${!FILES[@]}"; do
   fi
 done
 
+# ── 写入 package.json ────────────────────────────────────────────────────────
+# music-worker.js 为 ESM 单文件产物；写入 {"type":"module"} 确保 PM2 / Node
+# 在任何 Node 版本下都以 ESM 方式加载，避免 "Cannot use import statement" 报错。
+printf '{"type":"module"}\n' > "${TARGET_DIR}/package.json"
+info "已写入 ./${TARGET_DIR}/package.json（type: module）"
+
 # ── 创建下载目录 ──────────────────────────────────────────────────────────────
 ENV_FILE="${TARGET_DIR}/.env"
 DOWNLOAD_DIR=""
@@ -170,6 +176,6 @@ echo ""
 echo "  2. 启动 Worker："
 echo "     ${YELLOW}cd ${TARGET_DIR} && node music-worker.js${RESET}"
 echo ""
-echo "  3. （可选）使用 PM2 后台运行（delete 在首次无该进程时会忽略错误）："
-echo "     ${YELLOW}pm2 delete music-upload-worker 2>/dev/null || true${RESET}"
-echo "     ${YELLOW}cd ${TARGET_DIR} && pm2 start music-worker.js --name music-upload-worker${RESET}"
+echo "  3. （可选）使用 PM2 后台运行（首次无残留进程时 delete/pkill 报错可忽略）："
+echo "     ${YELLOW}pm2 delete music-upload-worker 2>/dev/null; pkill -f '[m]usic-worker' 2>/dev/null; true${RESET}"
+echo "     ${YELLOW}cd ${TARGET_DIR} && pm2 start music-worker.js --name music-upload-worker && pm2 save${RESET}"
